@@ -3,7 +3,33 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import os
 import time
+import json
 
+FACILITY_ID_LIST = [
+    "DL0020",
+    "DL0021",
+    "DL0061",
+    "DL0095",
+    "DL0113",
+    "DL0250",
+    "DL0260",
+    "DL0264",
+    "DL0266",
+    "DL0280",
+    "DL0298",
+    "DL0305",
+    "DL0317",
+    "DL0357",
+    "DL0369",
+    "DL0480",
+    "DL0569",
+    "DL0698",
+    "DL0705",
+    "DL0731",
+    "DL0761",
+    "DL0808",
+    "DL9999L"
+]
 
 def create_driver(path):
     return webdriver.Chrome(path)
@@ -14,7 +40,13 @@ def open_website(webdriver, link):
 
 
 def search_classroom(driver, room_num):
+
     search_bar = driver.find_element(By.ID, "OSR_DERIVED_RM_FACILITY_ID")
+
+    # Make sure text field is empty.
+    search_bar.send_keys(Keys.CONTROL, 'a')
+    search_bar.send_keys(Keys.BACKSPACE)
+
     search_bar.send_keys(room_num)
     search_bar.send_keys(Keys.RETURN)
 
@@ -75,12 +107,14 @@ def parse_box_data(time_boxes):
                 day = "Thursday"
             elif current_box % boxes_per_row == 5:
                 day = "Friday"
+
             # Create dictionary with class information.
             info = {
                 "Day": day,
                 "Class Number": element_separated[0],
                 "Class Type": element_separated[1],
-                "Class Duration": element_separated[2],
+                "Class Start": convert_to_24_hr(element_separated[2][0:7]),
+                "Class End": convert_to_24_hr(element_separated[2][9:]),
                 "Class Location": element_separated[3],
             }
 
@@ -100,6 +134,31 @@ def parse_box_data(time_boxes):
 
     return classes_information
 
+
+def convert_to_24_hr(time):
+    # First, make sure is in ##:##XX format.
+    if (time[1] == ":"):
+        time = "0" + time
+
+    # If PM, add 12 hours, except if 12:##.
+    if (time[0:2] != "12") and (time[5:7] == "PM"):
+        fixed_time = str(int(time[0:2]) + 12) + time[2:-2]
+    else:
+        fixed_time = time[0:-2]
+
+    # Lazy fix for extra letter at end. Will be updated.
+    if (fixed_time[-1:].isalpha()):
+        fixed_time = fixed_time[0:-1]
+
+    return fixed_time
+
+
+def output_info(facility_id, weekly_schedule):
+    if not os.path.exists(os.getcwd() + "\\" + facility_id[0:2]):
+        os.makedirs(os.getcwd() + "\\" + facility_id[0:2])
+    with open(os.getcwd() + "\\" + facility_id[0:2] + "\\" + facility_id + ".json", "w+") as f:
+        json.dump(weekly_schedule, f)
+
 # Executable path of browser driver.
 DRIVER_PATH = os.getcwd() + "\chromedriver.exe"
 
@@ -112,24 +171,25 @@ driver = create_driver(DRIVER_PATH)
 # Open website.
 open_website(driver, ROOM_MATRIX_LINK)
 
-# Find room search bar and enter room number.
-search_classroom(driver, "CH0312")
+for facility_id in FACILITY_ID_LIST:
+    # Find room search bar and enter room number.
+    search_classroom(driver, facility_id)
 
-time.sleep(1)
+    time.sleep(2)
 
-# Refresh schedule.
-refresh_schedule(driver)
+    # Refresh schedule.
+    refresh_schedule(driver)
 
-time.sleep(3)
+    time.sleep(4)
 
-# Grabs each individual time box.
-time_boxes = grab_box_info(driver, By.CLASS_NAME, "PSLEVEL3GRIDODDROW")
+    # Grabs each individual time box.
+    time_boxes = grab_box_info(driver, By.CLASS_NAME, "PSLEVEL3GRIDODDROW")
 
-# Creates a list of dictionaries, whose entries contain class information.
-weekly_schedule = parse_box_data(time_boxes)
+    # Creates a list of dictionaries, whose entries contain class information.
+    weekly_schedule = parse_box_data(time_boxes)
 
-for class_info in weekly_schedule:
-    print(class_info)
+    # Save schedule to JSON.
+    output_info(facility_id, weekly_schedule)
 
 # Close website.
 driver.quit()
