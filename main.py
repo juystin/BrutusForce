@@ -5,31 +5,11 @@ import os
 import time
 import json
 
-FACILITY_ID_LIST = [
-    "DL0020",
-    "DL0021",
-    "DL0061",
-    "DL0095",
-    "DL0113",
-    "DL0250",
-    "DL0260",
-    "DL0264",
-    "DL0266",
-    "DL0280",
-    "DL0298",
-    "DL0305",
-    "DL0317",
-    "DL0357",
-    "DL0369",
-    "DL0480",
-    "DL0569",
-    "DL0698",
-    "DL0705",
-    "DL0731",
-    "DL0761",
-    "DL0808",
-    "DL9999L"
-]
+
+def get_facility_ids():
+    text_file = open("facility_ids.txt", "r")
+    return text_file.read().splitlines()
+    
 
 def create_driver(path):
     return webdriver.Chrome(path)
@@ -40,7 +20,6 @@ def open_website(webdriver, link):
 
 
 def search_classroom(driver, room_num):
-
     search_bar = driver.find_element(By.ID, "OSR_DERIVED_RM_FACILITY_ID")
 
     # Make sure text field is empty.
@@ -66,7 +45,7 @@ def parse_box_data(time_boxes):
     # (Filtering algorithm subject to change in the future)
 
     # Always ignore first nine (nine) elements.
-    # These elements consist of *the entire grid* and *the names and dates of the seven-day time span*,
+    # These elements consist of *the entire grid*, the *"Time" box*, and *the names and dates of the seven-day time span*,
     # which are irrelevant (as of now).
     time_boxes = time_boxes[9:]
 
@@ -171,7 +150,10 @@ driver = create_driver(DRIVER_PATH)
 # Open website.
 open_website(driver, ROOM_MATRIX_LINK)
 
-for facility_id in FACILITY_ID_LIST:
+# Load all facilities to search.
+facility_id_list = get_facility_ids()
+
+for facility_id in facility_id_list:
     # Find room search bar and enter room number.
     search_classroom(driver, facility_id)
 
