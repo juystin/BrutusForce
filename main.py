@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import os
 import time
-import json
+import sqlite3
 
 
 def get_facility_ids():
@@ -132,11 +132,13 @@ def convert_to_24_hr(time):
     return fixed_time
 
 
-def output_info(facility_id, weekly_schedule):
-    if not os.path.exists(os.getcwd() + "\\" + facility_id[0:2]):
-        os.makedirs(os.getcwd() + "\\" + facility_id[0:2])
-    with open(os.getcwd() + "\\" + facility_id[0:2] + "\\" + facility_id + ".json", "w+") as f:
-        json.dump(weekly_schedule, f)
+def output_info(c, facility_id, weekly_schedule):
+
+    for class_info in weekly_schedule:
+        c.execute("INSERT INTO classes VALUES (?,?,?,?,?,?)", (facility_id, class_info["Class Location"],
+                  class_info["Day"], class_info["Class Number"], class_info["Class Start"], class_info["Class End"]))
+
+    conn.commit()
 
 # Executable path of browser driver.
 DRIVER_PATH = os.getcwd() + "\chromedriver.exe"
@@ -152,6 +154,19 @@ open_website(driver, ROOM_MATRIX_LINK)
 
 # Load all facilities to search.
 facility_id_list = get_facility_ids()
+
+# Create SQLLite database.
+conn = sqlite3.connect('classes.db')
+c = conn.cursor()
+
+c.execute("""CREATE TABLE classes (
+                facility_id text,
+                facility_name text,
+                day text,
+                class_number text,
+                start_time text,
+                end_time text
+                )""")
 
 for facility_id in facility_id_list:
     # Find room search bar and enter room number.
@@ -170,8 +185,11 @@ for facility_id in facility_id_list:
     # Creates a list of dictionaries, whose entries contain class information.
     weekly_schedule = parse_box_data(time_boxes)
 
-    # Save schedule to JSON.
-    output_info(facility_id, weekly_schedule)
+    # Save schedule to SQLite database.
+    output_info(c, facility_id, weekly_schedule)
 
 # Close website.
 driver.quit()
+
+# Close database connection.
+conn.close()
