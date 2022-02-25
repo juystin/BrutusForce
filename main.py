@@ -135,8 +135,10 @@ def convert_to_24_hr(time):
 def output_info(c, facility_id, weekly_schedule):
 
     for class_info in weekly_schedule:
-        c.execute("INSERT INTO classes VALUES (?,?,?,?,?,?)", (facility_id, class_info["Class Location"],
-                  class_info["Day"], class_info["Class Number"], class_info["Class Start"], class_info["Class End"]))
+        c.execute("INSERT INTO classes VALUES (?,?,?,?,?,?,?,?)", (facility_id, class_info["Class Location"],
+                  class_info["Day"], class_info["Class Number"],
+                  class_info["Class Start"][0:2], class_info["Class Start"][3:5],
+                  class_info["Class End"][0:2], class_info["Class End"][3:5]))
 
     conn.commit()
 
@@ -164,7 +166,9 @@ c.execute("""CREATE TABLE classes (
                 facility_name text,
                 day text,
                 class_number text,
-                start_time text,
+                start_hour text,
+                start_min text,
+                end_hour text,
                 end_time text
                 )""")
 
