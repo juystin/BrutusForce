@@ -87,14 +87,17 @@ def parse_box_data(time_boxes):
             elif current_box % boxes_per_row == 5:
                 day = "Friday"
 
+            time_info = element_separated[2].split()
+
             # Create dictionary with class information.
             info = {
                 "Day": day,
                 "Class Number": element_separated[0],
                 "Class Type": element_separated[1],
-                "Class Start": convert_to_24_hr(element_separated[2][0:7]),
-                "Class End": convert_to_24_hr(element_separated[2][9:]),
-                "Class Location": element_separated[3],
+                "Class Start": convert_to_24_hr(time_info[0]),
+                # Ignore time_info[1] (which is always "-")
+                "Class End": convert_to_24_hr(time_info[2]),
+                "Class Location": element_separated[3]
             }
 
             classes_information.append(info)
@@ -119,15 +122,11 @@ def convert_to_24_hr(time):
     if (time[1] == ":"):
         time = "0" + time
 
-    # If PM, add 12 hours, except if 12:##.
+    # If PM, add 12 hours, except if 12:##PM.
     if (time[0:2] != "12") and (time[5:7] == "PM"):
         fixed_time = str(int(time[0:2]) + 12) + time[2:-2]
     else:
         fixed_time = time[0:-2]
-
-    # Lazy fix for extra letter at end. Will be updated.
-    if (fixed_time[-1:].isalpha()):
-        fixed_time = fixed_time[0:-1]
 
     return fixed_time
 
