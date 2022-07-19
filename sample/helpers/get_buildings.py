@@ -1,5 +1,7 @@
 import re
 import time
+import requests
+import os
 
 from selenium.webdriver.common.by import By
 
@@ -7,6 +9,13 @@ from sample.helpers.connectors import create_connection
 from sample.helpers.connectors import create_driver
 from sample.helpers.connectors import load_building_numbers
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_BASE_URL = "https://maps.googleapis.com/maps/api/geocode/json?"
 BUILDING_INDEX_QUERY = "https://www.osu.edu/map/building.php?building="
 
 
@@ -20,7 +29,7 @@ def init_tables(conn):
 
     cursor.execute('''DROP TABLE if EXISTS buildings''')
     cursor.execute('''CREATE TABLE buildings
-    (building_num text, building_name text, building_abbriev text, address text, link text)
+    (building_num text, building_name text, building_abbriev text, address text, link text, lat text, lng text)
     ''')
 
     cursor.execute('''DROP TABLE if EXISTS classrooms''')
@@ -49,6 +58,13 @@ def sort_by_building_numbers(driver):
     enter_button.click()
 
 
+def geocode_address(address):
+    return requests.get(GOOGLE_BASE_URL,
+                       params={
+                           'key': GOOGLE_API_KEY,
+                            'address': address}
+                       ).json()['results'][0]['geometry']['location']
+
 def grab_building_info(driver, query, conn, building_numbers):
     cursor = conn.cursor()
     for num in building_numbers:
@@ -65,10 +81,12 @@ def grab_building_info(driver, query, conn, building_numbers):
         building_abbriev = building_info[0].split()[-1]
         address = ', '.join(building_info[2:4])
 
+        geo_coordinates = geocode_address(address)
+
         cursor.execute(
-            '''INSERT INTO buildings (building_num, building_name, building_abbriev, address, link) 
-            VALUES (?, ?, ?, ?, ?)''',
-            (num, building_name, building_abbriev, address, query + num))
+            '''INSERT INTO buildings (building_num, building_name, building_abbriev, address, link, lat, lng) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (num, building_name, building_abbriev, address, query + num, geo_coordinates['lat'], geo_coordinates['lng']))
 
         for classroom in classrooms:
             cursor.execute(

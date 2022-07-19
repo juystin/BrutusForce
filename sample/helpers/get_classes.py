@@ -59,6 +59,18 @@ def get_response_by_subject(subject, page_number):
     return requests.get(f"https://content.osu.edu/v2/classes/search?q=&p=" + str(page_number) + "&term=1228&campus=col&subject=" + subject).json()
 
 
+def convert_to_24_hr(time):
+    if time is None:
+        return time
+
+    if (time[1] == ":"):
+        time = "0" + time
+
+    if (time[6:] == "pm" and time[0:2] != "12"):
+        time = str((int(time[0:2])) + 12) + time[2:]
+
+    return time[0:5]
+
 def run_query_on_subject(conn, subject):
     current_page = 1
 
@@ -112,7 +124,7 @@ def run_query_on_subject(conn, subject):
                         class_number, facility_id, day, start_time, end_time) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ''', (get_building_number(conn, facility_id), class_title, class_desc, units, class_type, class_subject,
-                              class_number, facility_id, day, start_time, end_time))
+                              class_number, facility_id, day, convert_to_24_hr(start_time), convert_to_24_hr(end_time)))
 
         conn.commit()
 
