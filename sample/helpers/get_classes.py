@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 
 from sample.helpers.connectors import create_connection
 
@@ -10,7 +11,7 @@ def init_table(conn):
     cursor.execute('''
     CREATE TABLE classes
     (building_num text, class_title text, class_desc text, units text, class_type text, class_subject text, 
-    class_number text, facility_id text, day text, start_time text, end_time text)
+    class_number text, facility_id text, day text, start_time text, end_time text, class_duration text)
     ''')
 
     cursor.close()
@@ -71,6 +72,12 @@ def convert_to_24_hr(time):
 
     return time[0:5]
 
+
+def get_class_duration(start_time, end_time):
+    if (start_time is None or end_time is None):
+        return "0:00"
+    return str(datetime.strptime(end_time, "%H:%M") - datetime.strptime(start_time, "%H:%M"))[:-3]
+
 def run_query_on_subject(conn, subject):
     current_page = 1
 
@@ -121,10 +128,11 @@ def run_query_on_subject(conn, subject):
                         cursor.execute('''
                         INSERT INTO classes
                         (building_num, class_title, class_desc, units, class_type, class_subject, 
-                        class_number, facility_id, day, start_time, end_time) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        class_number, facility_id, day, start_time, end_time, class_duration) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ''', (get_building_number(conn, facility_id), class_title, class_desc, units, class_type, class_subject,
-                              class_number, facility_id, day, convert_to_24_hr(start_time), convert_to_24_hr(end_time)))
+                              class_number, facility_id, day, convert_to_24_hr(start_time), convert_to_24_hr(end_time),
+                              get_class_duration(convert_to_24_hr(start_time), convert_to_24_hr(end_time))))
 
         conn.commit()
 
